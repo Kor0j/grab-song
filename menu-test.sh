@@ -36,8 +36,12 @@ done
 )
 
 printf "$(tput cup 0 0)$(tput ed)$(eval "printf \"$MENU_PROPER_NAME\"")"
+
+if [ "$SELECTION_LINE" -gt "$ENUM_MAX" ]; then
+SELECTION_LINE="$ENUM_MAX"
+fi
     
-read -rsn3 input
+read -rsn3 -t 0.25 input
 
 printf "$input" | grep "$arrowup"
 if [ "$?" -eq $SUCCESS ]; then
