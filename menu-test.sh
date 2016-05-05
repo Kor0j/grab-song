@@ -66,10 +66,13 @@ done
 
 tput cup 0 0
 tput ed
+tput sgr0
 
-printf "$(tput sgr0)$(printf "$MENU_STRING" | sed -n "$SELECTION_LINE{p;q}")\n"
+printf "$(printf "$MENU_STRING" | sed -n "$SELECTION_LINE{p;q}")\n" | tee > test.txt
 
 '
+TESTVAR=$(eval "cat \"test.txt\"")
+printf "$TESTVAR\n"
 
 stty echo
 tput cnorm
