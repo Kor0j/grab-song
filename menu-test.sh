@@ -71,7 +71,7 @@ tput sgr0
 printf "$(printf "$MENU_STRING" | sed -n "$SELECTION_LINE{p;q}")\n" | tee > test.txt
 
 '
-TESTVAR=$(eval "cat \"test.txt\"")
+TESTVAR=$(cat test.txt)
 printf "$TESTVAR\n"
 
 stty echo
