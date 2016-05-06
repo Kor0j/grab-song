@@ -206,6 +206,10 @@ printf "$(printf "$MENU_STRING" | sed -n "$SELECTION_LINE{p;q}")\n" > $TMP_DIR/t
 # END PLAYER SELECTION MENU
 }
 
+# Prevent 'qdbus' overflows by employing a tic system.
+UPDATE_TIC="10"
+UPDATE_TIC_MAX="10"
+
 # BEGIN MAIN LOOP
 while true; do
 
@@ -217,8 +221,9 @@ tput ed
 printf "$(tput cup 0 0)$(tput rev)$(tput bold) Q:$(tput sgr0)$(tput bold) Close. $(tput rev)$(tput bold) P:$(tput sgr0)$(tput bold) Select media player. $(tput rev)$(tput bold) V:$(tput sgr0)$(tput bold) Toggle verbosity. $(tput cup $(tput lines) 0)$(tput cuu1)Selected media player: $(qdbus org.mpris.MediaPlayer2.$PLAYER_SELECTION /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Identity) $(tput cup $(tput lines) 0)$(tput rev)$(tput bold) M:$(tput sgr0)$(tput bold) Toggle oneliner mode. $(tput sgr0)"
 
 # Check for MPRIS data update.
+
+if [ "$UPDATE_TIC" -ge "$UPDATE_TIC_MAX" ]; then
 if [ "$(qdbus org.mpris.MediaPlayer2.$PLAYER_SELECTION /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Metadata)" != "$(cat $SONG_METADATA)" ]; then
-(
 
 qdbus org.mpris.MediaPlayer2.$PLAYER_SELECTION /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Metadata > $SONG_METADATA
 
@@ -246,7 +251,11 @@ a=$(cat $SONG_METADATA | grep "xesam:artist:" | sed 's/xesam:artist: //')
 i=$(cat $SONG_METADATA | grep "xesam:album:" | sed 's/xesam:album: //')
 printf "$(eval "printf \"$ONELINER_FORMAT\"")" > $SONG_ONELINER
 fi
-)
+
+fi
+
+UPDATE_TIC="0"
+
 fi
 
 # Verbosity.
@@ -281,10 +290,11 @@ fi
 
 while true; do
 
-read -rsn1 -t 0.25 input
+read -rsn1 -t 0.1 input
 
 if [ "$input" = "p" ] || [ "$input" = "P" ]; then
-    SELECTION_MENU_ACTIVE="true"    
+    SELECTION_MENU_ACTIVE="true"
+    sleep 0.1    
 fi
 
 
@@ -299,7 +309,8 @@ if [ "$input" = "m" ] || [ "$input" = "M" ]; then
     else 
         ONELINE="false" ; 
     fi 
-printf "changeme" > $SONG_METADATA    
+    printf "" > $SONG_METADATA
+    sleep 0.1    
 fi
 
 if [ "$input" = "v" ] || [ "$input" = "V" ]; then
@@ -308,6 +319,7 @@ if [ "$input" = "v" ] || [ "$input" = "V" ]; then
     else
         VERBOSE="false" ;
     fi
+    sleep 0.1
 fi
 break
 done
@@ -324,7 +336,7 @@ PLAYER_SELECTION="$(cat $TMP_DIR/temp_player_selection)"
 SELECTION_MENU_ACTIVE="$(cat $TMP_DIR/temp_selection_menu_active)"
 # END INPUT LOOP
 
-
+UPDATE_TIC=$(($UPDATE_TIC +1))
 
 # END MAIN LOOP
 
