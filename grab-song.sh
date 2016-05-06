@@ -59,6 +59,11 @@ printf "$ONELINE" > $TMP_DIR/temp_oneline
 export coreproc="$$"
 export SONG_METADATA
 
+# Set current player variable for the UI.
+PLAYER_SELECTION_LONG="$(qdbus org.mpris.MediaPlayer2.$PLAYER_SELECTION /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Identity)"
+export PLAYER_SELECTION_LONG
+printf "$PLAYER_SELECTION_LONG" > $TMP_DIR/temp_player_selection_long
+
 # Make sure that the files and folders actually exist.
 mkdir -p $OUTPUT_DIR
 touch $SONG_METADATA
@@ -201,7 +206,12 @@ tput cup 1 0
 tput ed
 tput sgr0
 
-printf "$(printf "$MENU_STRING" | sed -n "$SELECTION_LINE{p;q}")\n" > $TMP_DIR/temp_player_selection
+PLAYER_SELECTION="$(printf "$(printf "$MENU_STRING" | sed -n "$SELECTION_LINE{p;q}")\n")" 
+printf "$PLAYER_SELECTION" > $TMP_DIR/temp_player_selection
+
+PLAYER_SELECTION_LONG="$(qdbus org.mpris.MediaPlayer2.$PLAYER_SELECTION /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Identity)"
+printf "$PLAYER_SELECTION_LONG" > $TMP_DIR/temp_player_selection_long
+
 exit
 '
 # END PLAYER SELECTION MENU
@@ -219,7 +229,7 @@ tput cup 0 0
 tput ed
 
 # Display help key.
-printf "$(tput cup 0 0)$(tput rev)$(tput bold) Q:$(tput sgr0)$(tput bold) Close. $(tput rev)$(tput bold) P:$(tput sgr0)$(tput bold) Select media player. $(tput rev)$(tput bold) V:$(tput sgr0)$(tput bold) Toggle verbosity. $(tput cup $(tput lines) 0)$(tput cuu1)Selected media player: $(qdbus org.mpris.MediaPlayer2.$PLAYER_SELECTION /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Identity) $(tput cup $(tput lines) 0)$(tput rev)$(tput bold) M:$(tput sgr0)$(tput bold) Toggle oneliner mode. $(tput sgr0)"
+printf "$(tput cup 0 0)$(tput rev)$(tput bold) Q:$(tput sgr0)$(tput bold) Close. $(tput rev)$(tput bold) P:$(tput sgr0)$(tput bold) Select media player. $(tput rev)$(tput bold) V:$(tput sgr0)$(tput bold) Toggle verbosity. $(tput cup $(tput lines) 0)$(tput cuu1)Selected media player: $PLAYER_SELECTION_LONG $(tput cup $(tput lines) 0)$(tput rev)$(tput bold) M:$(tput sgr0)$(tput bold) Toggle oneliner mode. $(tput sgr0)"
 
 # Check for MPRIS data update.
 
@@ -239,17 +249,21 @@ else
 convert Images/NoArt.* -resize 500x500! $OUTPUT_DIR/AlbumArt.jpg &>/dev/null
 
 fi
+# Edit the junk out of the MPRIS data.
+SONG_TITLE_VAR="$(cat $SONG_METADATA | grep "xesam:title:" | sed 's/xesam:title: //')"
+SONG_ARTIST_VAR="$(cat $SONG_METADATA | grep "xesam:artist:" | sed 's/xesam:artist: //')"
+SONG_ALBUM_VAR="$(cat $SONG_METADATA | grep "xesam:album:" | sed 's/xesam:album: //')"
 
 if [ "$ONELINE" = "false" ]; then
-# Edit the junk out of the MPRIS data and save the title, artist, and album data as individual text files.
-cat $SONG_METADATA | grep "xesam:title:" | sed 's/xesam:title: //' > $SONG_TITLE
-cat $SONG_METADATA | grep "xesam:artist:" | sed 's/xesam:artist: //' > $SONG_ARTIST
-cat $SONG_METADATA | grep "xesam:album:" | sed 's/xesam:album: //' > $SONG_ALBUM
+# Save the title, artist, and album data as individual text files.
+printf "$SONG_TITLE_VAR" > $SONG_TITLE
+printf "$SONG_ARTIST_VAR" > $SONG_ARTIST
+printf "$SONG_ALBUM_VAR" > $SONG_ALBUM
 else
 # Same as above, except for oneline mode.
-t=$(cat $SONG_METADATA | grep "xesam:title:" | sed 's/xesam:title: //')
-a=$(cat $SONG_METADATA | grep "xesam:artist:" | sed 's/xesam:artist: //')
-i=$(cat $SONG_METADATA | grep "xesam:album:" | sed 's/xesam:album: //')
+t="$SONG_TITLE_VAR"
+a="$SONG_ARTIST_VAR"
+i="$SONG_ALBUM_VAR"
 printf "$(eval "printf \"$ONELINER_FORMAT\"")" > $SONG_ONELINER
 fi
 
@@ -268,11 +282,11 @@ printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' =
 
 if [ "$ONELINE" = "false" ]; then
 
-printf "$(tput cup 2 0)Title: $(cat $SONG_METADATA | grep "xesam:title:" | sed 's/xesam:title: //')\n\nArtist: $(cat $SONG_METADATA | grep "xesam:artist:" | sed 's/xesam:artist: //')\n\nAlbum: $(cat $SONG_METADATA | grep "xesam:album:" | sed 's/xesam:album: //')\n"
+printf "$(tput cup 2 0)Title: $SONG_TITLE_VAR\n\nArtist: $SONG_ARTIST_VAR\n\nAlbum: $SONG_ALBUM_VAR\n"
 
 else
 
-printf "$(tput cup 2 0)$(cat $SONG_ONELINER)\n"
+printf "$(tput cup 2 0)$(eval "printf \"$ONELINER_FORMAT\"")\n"
 
 fi
 
@@ -334,7 +348,8 @@ exit
 
 VERBOSE="$(cat $TMP_DIR/temp_verbose)" 
 ONELINE="$(cat $TMP_DIR/temp_oneline)"
-PLAYER_SELECTION="$(cat $TMP_DIR/temp_player_selection)" 
+PLAYER_SELECTION="$(cat $TMP_DIR/temp_player_selection)"
+PLAYER_SELECTION_LONG="$(cat $TMP_DIR/temp_player_selection_long)" 
 SELECTION_MENU_ACTIVE="$(cat $TMP_DIR/temp_selection_menu_active)"
 # END INPUT LOOP
 
