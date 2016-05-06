@@ -202,6 +202,7 @@ tput ed
 tput sgr0
 
 printf "$(printf "$MENU_STRING" | sed -n "$SELECTION_LINE{p;q}")\n" > $TMP_DIR/temp_player_selection
+exit
 '
 # END PLAYER SELECTION MENU
 }
@@ -294,6 +295,7 @@ read -rsn1 -t 0.1 input
 
 if [ "$input" = "p" ] || [ "$input" = "P" ]; then
     SELECTION_MENU_ACTIVE="true"
+    printf "$SELECTION_MENU_ACTIVE" > $TMP_DIR/temp_selection_menu_active
     sleep 0.1    
 fi
 
@@ -309,6 +311,7 @@ if [ "$input" = "m" ] || [ "$input" = "M" ]; then
     else 
         ONELINE="false" ; 
     fi 
+    printf "$ONELINE" > $TMP_DIR/temp_oneline
     printf "" > $SONG_METADATA
     sleep 0.1    
 fi
@@ -319,15 +322,13 @@ if [ "$input" = "v" ] || [ "$input" = "V" ]; then
     else
         VERBOSE="false" ;
     fi
+    printf "$VERBOSE" > $TMP_DIR/temp_verbose
     sleep 0.1
 fi
 break
 done
 
-printf "$VERBOSE" > $TMP_DIR/temp_verbose
-printf "$ONELINE" > $TMP_DIR/temp_oneline
-printf "$SELECTION_MENU_ACTIVE" > $TMP_DIR/temp_selection_menu_active
-
+exit
 '
 
 VERBOSE="$(cat $TMP_DIR/temp_verbose)" 
