@@ -22,6 +22,7 @@ if [ ! -f $SETTINGS_FILE ]; then
     echo "rm-output=$RM_OUTPUT" >> $SETTINGS_FILE
 fi
 
+# Load stored settings.
 VERBOSE=${VERBOSE-$(cat $SETTINGS_FILE | grep "verbose=" | sed 's/verbose=//')}
 
 PLAYER_SELECTION=${1-$(cat $SETTINGS_FILE | grep "last-used-player=" | sed 's/last-used-player=//')}
@@ -35,12 +36,30 @@ RM_OUTPUT=${RM_OUTPUT-$(cat $SETTINGS_FILE | grep "rm-output=" | sed 's/rm-outpu
 
 echo $RM_OUTPUT
 
+# Set up the locations of the output files.
 SONG_METADATA="$TMP_DIR/SongMetaData.txt"
 SONG_TITLE="$OUTPUT_DIR/SongTitle.txt"
 SONG_ARTIST="$OUTPUT_DIR/SongArtist.txt"
 SONG_ALBUM="$OUTPUT_DIR/SongAlbum.txt"
 SONG_ONELINER="$OUTPUT_DIR/SongInfo.txt"
 
+# Trust me.
+SELECTION_MENU_ACTIVE="false"
+
+# Make sure that subshells can understand the parent script.
+export TMP_DIR
+export VERBOSE
+printf "$VERBOSE" > $TMP_DIR/temp_verbose
+export PLAYER_SELECTION
+export SELECTION_MENU_ACTIVE
+printf "$PLAYER_SELECTION" > $TMP_DIR/temp_player_selection
+printf "$SELECTION_MENU_ACTIVE" > $TMP_DIR/temp_selection_menu_active
+export ONELINE
+printf "$ONELINE" > $TMP_DIR/temp_oneline
+export coreproc="$$"
+export SONG_METADATA
+
+# Make sure that the files and folders actually exist.
 mkdir -p $OUTPUT_DIR
 touch $SONG_METADATA
 touch $SONG_TITLE
@@ -106,9 +125,96 @@ reset
 exit 
 }
 
+media_player_menu()
+{
+# BEGIN PLAYER SELECTION MENU
+/bin/bash -c '
+
+SELECTION_LINE="1"
+
+arrowup="\[A"
+arrowdown="\[B"
+arrowright="\[C"
+
+SUCCESS=0
+
+# Get the list of available players.
+while true; do
+
+MENU_STRING="$(qdbus org.mpris.MediaPlayer2.* | grep "org.mpris.MediaPlayer2." | sed 's/org.mpris.MediaPlayer2.//')"
+
+# Enumerate the menu entries.
+ENUM_TIC="1"
+ENUM_MAX="$(printf "$MENU_STRING" | wc -w)"
+
+MENU_PROPER_NAME=$(
+
+while [ "$ENUM_TIC" -le "$ENUM_MAX" ]; do
+
+eval MENU_ENTRY$ENUM_TIC="$ENUM_TIC"
+
+# Populate the menu.
+printf "$(qdbus org.mpris.MediaPlayer2.$(printf "$MENU_STRING" | sed -n "$ENUM_TIC{p;q}")  /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Identity | sed "s#^#$(if [ "$SELECTION_LINE" = "$MENU_ENTRY${ENUM_TIC}" ]; then tput rev; else tput sgr0; fi)##")$(tput sgr0)\n"
+
+ENUM_TIC=$(($ENUM_TIC +1))
+
+done
+
+)
+
+# Display the menu.
+tput cup 0 0
+tput ed
+printf "$(tput cup $(tput lines) 0)$(tput bold)$(tput rev) \u21E7 $(tput sgr0)$(tput bold) Move up. $(tput rev) \u21E9 $(tput sgr0)$(tput bold) Move down. $(tput rev) \u21E8 $(tput sgr0)$(tput bold) Make selection. $(tput sgr0)"
+printf "$(tput cup 0 0)$(tput bold)Please select a media player: \n$(tput sgr0)$(eval "printf \"$MENU_PROPER_NAME\"")"
+
+if [ "$SELECTION_LINE" -gt "$ENUM_MAX" ]; then
+SELECTION_LINE="$ENUM_MAX"
+fi
+
+# Scan for input, and define some controls.    
+read -rsn3 -t 0.25 input
+
+printf "$input" | grep "$arrowup"
+if [ "$?" -eq $SUCCESS ]; then
+    if [ "$SELECTION_LINE" -gt "1" ]; then
+        ((SELECTION_LINE--))
+    fi
+fi
+
+printf "$input" | grep "$arrowdown"
+if [ "$?" -eq $SUCCESS ]; then
+    if [ "$SELECTION_LINE" -lt "$ENUM_MAX" ]; then
+        ((SELECTION_LINE++))
+    fi
+fi
+
+printf "$input" | grep "$arrowright"
+if [ "$?" -eq $SUCCESS ]; then
+    break
+fi
+
+
+done
+
+tput cup 1 0
+tput ed
+tput sgr0
+
+printf "$(printf "$MENU_STRING" | sed -n "$SELECTION_LINE{p;q}")\n" > $TMP_DIR/temp_player_selection
+'
+# END PLAYER SELECTION MENU
+}
+
 # BEGIN MAIN LOOP
 while true; do
-(
+
+# Clear the window.
+tput cup 0 0
+tput ed
+
+# Display help key.
+printf "$(tput cup 0 0)$(tput rev)$(tput bold) Q:$(tput sgr0)$(tput bold) Close. $(tput rev)$(tput bold) P:$(tput sgr0)$(tput bold) Select media player. $(tput rev)$(tput bold) V:$(tput sgr0)$(tput bold) Toggle verbosity. $(tput cup $(tput lines) 0)$(tput cuu1)Selected media player: $(qdbus org.mpris.MediaPlayer2.$PLAYER_SELECTION /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Identity) $(tput cup $(tput lines) 0)$(tput rev)$(tput bold) M:$(tput sgr0)$(tput bold) Toggle oneliner mode. $(tput sgr0)"
 
 # Check for MPRIS data update.
 if [ "$(qdbus org.mpris.MediaPlayer2.$PLAYER_SELECTION /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Metadata)" != "$(cat $SONG_METADATA)" ]; then
@@ -146,17 +252,17 @@ fi
 # Verbosity.
 if [ "$VERBOSE" = "true" ]; then
 
-tput cup 0 0
-tput ed
+tput cup 1 0
+
 printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' =
 
 if [ "$ONELINE" = "false" ]; then
 
-printf "$(tput cup 1 0)Title: $(cat $SONG_METADATA | grep "xesam:title:" | sed 's/xesam:title: //')\n\nArtist: $(cat $SONG_METADATA | grep "xesam:artist:" | sed 's/xesam:artist: //')\n\nAlbum: $(cat $SONG_METADATA | grep "xesam:album:" | sed 's/xesam:album: //')\n"
+printf "$(tput cup 2 0)Title: $(cat $SONG_METADATA | grep "xesam:title:" | sed 's/xesam:title: //')\n\nArtist: $(cat $SONG_METADATA | grep "xesam:artist:" | sed 's/xesam:artist: //')\n\nAlbum: $(cat $SONG_METADATA | grep "xesam:album:" | sed 's/xesam:album: //')\n"
 
 else
 
-printf "$(tput cup 1 0)$(cat $SONG_ONELINER)\n"
+printf "$(tput cup 2 0)$(cat $SONG_ONELINER)\n"
 
 fi
 
@@ -164,9 +270,61 @@ printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' =
 
 fi
 
-sleep 1
+# BEGIN INPUT LOOP
+if [ "$SELECTION_MENU_ACTIVE" = "true" ]; then
+    media_player_menu
+    SELECTION_MENU_ACTIVE="false"
+fi
 
-)
+
+/bin/bash -c '
+
+while true; do
+
+read -rsn1 -t 0.25 input
+
+if [ "$input" = "p" ] || [ "$input" = "P" ]; then
+    SELECTION_MENU_ACTIVE="true"    
+fi
+
+
+if [ "$input" = "q" ] || [ "$input" = "Q" ]; then
+    kill $coreproc
+    exit
+fi
+
+if [ "$input" = "m" ] || [ "$input" = "M" ]; then
+    if [ "$ONELINE" = "false" ]; then 
+        ONELINE="true" ; 
+    else 
+        ONELINE="false" ; 
+    fi 
+printf "changeme" > $SONG_METADATA    
+fi
+
+if [ "$input" = "v" ] || [ "$input" = "V" ]; then
+    if [ "$VERBOSE" = "false" ]; then
+        VERBOSE="true" ;
+    else
+        VERBOSE="false" ;
+    fi
+fi
+break
+done
+
+printf "$VERBOSE" > $TMP_DIR/temp_verbose
+printf "$ONELINE" > $TMP_DIR/temp_oneline
+printf "$SELECTION_MENU_ACTIVE" > $TMP_DIR/temp_selection_menu_active
+
+'
+
+VERBOSE="$(cat $TMP_DIR/temp_verbose)" 
+ONELINE="$(cat $TMP_DIR/temp_oneline)"
+PLAYER_SELECTION="$(cat $TMP_DIR/temp_player_selection)" 
+SELECTION_MENU_ACTIVE="$(cat $TMP_DIR/temp_selection_menu_active)"
+# END INPUT LOOP
+
+
 
 # END MAIN LOOP
 
