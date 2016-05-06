@@ -284,6 +284,7 @@ fi
 if [ "$SELECTION_MENU_ACTIVE" = "true" ]; then
     media_player_menu
     SELECTION_MENU_ACTIVE="false"
+    printf "$SELECTION_MENU_ACTIVE" > $TMP_DIR/temp_selection_menu_active
 fi
 
 
