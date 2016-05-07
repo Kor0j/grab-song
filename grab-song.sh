@@ -3,7 +3,7 @@
 tput civis
 stty -echo
 
-cd "${0%/*}"
+# cd "${0%/*}"
 
 # Define some defaults.
 TMP_DIR=`mktemp -d /tmp/$0.XXXXXXXXXXX`
@@ -229,7 +229,7 @@ tput cup 0 0
 tput ed
 
 # Display help key.
-printf "$(tput cup 0 0)$(tput rev)$(tput bold) Q:$(tput sgr0)$(tput bold) Close. $(tput rev)$(tput bold) P:$(tput sgr0)$(tput bold) Select media player. $(tput rev)$(tput bold) V:$(tput sgr0)$(tput bold) Toggle verbosity. $(tput cup $(tput lines) 0)$(tput cuu1)Selected media player: $PLAYER_SELECTION_LONG $(tput cup $(tput lines) 0)$(tput rev)$(tput bold) M:$(tput sgr0)$(tput bold) Toggle oneliner mode. $(tput sgr0)"
+printf "$(tput cup 0 0)$(tput rev)$(tput bold) Q:$(tput sgr0)$(tput bold) Close. $(tput rev)$(tput bold) P:$(tput sgr0)$(tput bold) Select media player. $(tput rev)$(tput bold) V:$(tput sgr0)$(tput bold) Toggle verbosity. $(tput cup $(tput lines) 0)$(tput cuu1)Selected media player: $PLAYER_SELECTION_LONG\n$(tput rev)$(tput bold) M:$(tput sgr0)$(tput bold) Toggle oneliner mode. $(tput sgr0)"
 
 # Check for MPRIS data update.
 
@@ -254,6 +254,10 @@ SONG_TITLE_VAR="$(cat $SONG_METADATA | grep "xesam:title:" | sed 's/xesam:title:
 SONG_ARTIST_VAR="$(cat $SONG_METADATA | grep "xesam:artist:" | sed 's/xesam:artist: //')"
 SONG_ALBUM_VAR="$(cat $SONG_METADATA | grep "xesam:album:" | sed 's/xesam:album: //')"
 
+t="$SONG_TITLE_VAR"
+a="$SONG_ARTIST_VAR"
+i="$SONG_ALBUM_VAR"
+
 if [ "$ONELINE" = "false" ]; then
 # Save the title, artist, and album data as individual text files.
 printf "$SONG_TITLE_VAR" > $SONG_TITLE
@@ -261,9 +265,6 @@ printf "$SONG_ARTIST_VAR" > $SONG_ARTIST
 printf "$SONG_ALBUM_VAR" > $SONG_ALBUM
 else
 # Same as above, except for oneline mode.
-t="$SONG_TITLE_VAR"
-a="$SONG_ARTIST_VAR"
-i="$SONG_ALBUM_VAR"
 printf "$(eval "printf \"$ONELINER_FORMAT\"")" > $SONG_ONELINER
 fi
 
@@ -282,11 +283,11 @@ printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' =
 
 if [ "$ONELINE" = "false" ]; then
 
-printf "$(tput cup 2 0)Title: $SONG_TITLE_VAR\n\nArtist: $SONG_ARTIST_VAR\n\nAlbum: $SONG_ALBUM_VAR\n"
+printf "Title: $SONG_TITLE_VAR\n\nArtist: $SONG_ARTIST_VAR\n\nAlbum: $SONG_ALBUM_VAR\n"
 
 else
 
-printf "$(tput cup 2 0)$(eval "printf \"$ONELINER_FORMAT\"")\n"
+printf "$(eval "printf \"$ONELINER_FORMAT\"")\n"
 
 fi
 
@@ -326,8 +327,8 @@ if [ "$input" = "m" ] || [ "$input" = "M" ]; then
     else 
         ONELINE="false" ; 
     fi 
-    printf "$ONELINE" > $TMP_DIR/temp_oneline
     printf "" > $SONG_METADATA
+    printf "$ONELINE" > $TMP_DIR/temp_oneline
     sleep 0.1    
 fi
 
