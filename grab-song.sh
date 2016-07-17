@@ -6,10 +6,12 @@ stty -echo
 generate_settings()
 {
 printf "verbose=$VERBOSE\n" >> $SETTINGS_FILE
-if [ -z "$PLAYER_SELECTION" ]; then break; else printf "last-used-player=$PLAYER_SELECTION" >> $SETTINGS_FILE; fi
+if [ -z "$PLAYER_SELECTION" ]; then break; else printf "last-used-player=$PLAYER_SELECTION\n" >> $SETTINGS_FILE; fi
 printf "output-directory=$OUTPUT_DIR\n" >> $SETTINGS_FILE
 printf "oneline=$ONELINE\n" >> $SETTINGS_FILE
 printf 'oneliner-format= $a: $t - $i \n' >> $SETTINGS_FILE
+printf "logging=$LOGGING\n" >> $SETTINGS_FILE
+printf "log-directory=$LOG_DIR\n" >> $SETTINGS_FILE
 printf "rm-output=$RM_OUTPUT\n" >> $SETTINGS_FILE
 }
 
@@ -21,6 +23,8 @@ sed -i "/last-used-player=/ c\last-used-player=$PLAYER_SELECTION" $SETTINGS_FILE
 sed -i "/output-directory=/ c\output-directory=$OUTPUT_DIR" $SETTINGS_FILE
 sed -i "/oneline=/ c\oneline=$ONELINE" $SETTINGS_FILE
 sed -i "/oneliner-format=/ c\oneliner-format=$ONELINER_FORMAT" $SETTINGS_FILE
+sed -i "/logging=/ c\logging=$LOGGING" $SETTINGS_FILE
+sed -i "/log-directory=/ c\log-directory=$LOG_DIR" $SETTINGS_FILE
 sed -i "/rm-output=/ c\rm-output=$RM_OUTPUT" $SETTINGS_FILE
 }
 
@@ -39,6 +43,7 @@ exit
 }
 
 if [ -z "$CONFIG_DIR" ]; then CONFIG_DIR=${CONFIG_DIR-Config}; fi
+if [ -z "$LOG_DIR" ]; then LOG_DIR=${LOG_DIR-Logs}; fi
 if [ -z "$TMP_DIR" ]; then TMP_DIR=`mktemp -d /tmp/grab-song.XXXXXXXXXXX`; fi
 if [ "$OUTPUT_DIR" = "" ]; then OUTPUT_DIR='Output'; fi
 if [ "$SETTINGS_FILE" = "" ]; then SETTINGS_FILE="$CONFIG_DIR/settings.conf"; fi
@@ -72,6 +77,9 @@ OUTPUT_DIR=${OUTPUT_DIR-$(cat $SETTINGS_FILE | grep "output-directory=" | sed 's
 ONELINE=${ONELINE-$(cat $SETTINGS_FILE | grep "oneline=" | sed 's/oneline=//')}
 ONELINER_FORMAT=${ONELINER_FORMAT-$(cat $SETTINGS_FILE | grep "oneliner-format=" | sed 's/oneliner-format=//')}
 
+LOGGING=${LOGGING-$(cat $SETTINGS_FILE | grep "logging=" | sed 's/logging=//')}
+LOG_DIR=${LOG_DIR-$(cat $SETTINGS_FILE | grep "log-directory=" | sed 's/log-directory=//')}
+
 RM_OUTPUT=${RM_OUTPUT-$(cat $SETTINGS_FILE | grep "rm-output=" | sed 's/rm-output=//')}
 
 # Test to make sure everything is present in the settings file.
@@ -80,6 +88,8 @@ TEST_PLAYER_SELECTION=$(cat $SETTINGS_FILE | grep "last-used-player=")
 TEST_OUTPUT_DIR=$(cat $SETTINGS_FILE | grep "output-directory=")
 TEST_ONELINE=$(cat $SETTINGS_FILE | grep "oneline=")
 TEST_ONELINER_FORMAT=$(cat $SETTINGS_FILE | grep "oneliner-format=")
+TEST_LOGGING=$(cat $SETTINGS_FILE | grep "logging=")
+TEST_LOG_DIR=$(cat $SETTINGS_FILE | grep "log-directory=")
 TEST_RM_OUTPUT=$(cat $SETTINGS_FILE | grep "rm-output=")
 
 if [ "$TEST_VERBOSE" = "" ]; then
@@ -97,6 +107,12 @@ fi
 if [ "$TEST_ONELINER_FORMAT" = "" ]; then
 printf "oneliner-format=$ONELINER_FORMAT" >> $SETTINGS_FILE
 fi
+if [ "$TEST_LOGGING" = "" ]; then
+printf "logging=$LOGGING" >> $SETTINGS_FILE
+fi
+if [ "$TEST_LOG_DIR" = "" ]; then
+printf "log-directory=$LOG_DIR" >> $SETTINGS_FILE
+fi
 if [ "$TEST_RM_OUTPUT" = "" ]; then
 printf "rm-output=$RM_OUTPUT" >> $SETTINGS_FILE
 fi
@@ -107,6 +123,7 @@ unset TEST_PLAYER_SELECTION
 unset TEST_OUTPUT_DIR
 unset TEST_ONELINE
 unset TEST_ONELINER_FORMAT
+unset TEST_LOGGING
 unset TEST_RM_OUTPUT
 
 # Set defaults if settings aren't present.
@@ -115,6 +132,7 @@ if [ "$FIRSTRUN" = "" ]; then FIRSTRUN='true'; fi
 if [ "$VERBOSE" = "" ]; then VERBOSE='true'; fi
 if [ "$ONELINE" = "" ]; then ONELINE='false'; fi
 if [ "$PLAYER_SELECTION" = "" ]; then PLAYER_SELECTION=''; fi
+if [ "$LOGGING" = "" ]; then LOGGING='false'; fi
 if [ "$RM_OUTPUT" = "" ]; then RM_OUTPUT='false'; fi
 
 SONG_METADATA="$TMP_DIR/SongMetaData.txt"
@@ -122,6 +140,11 @@ SONG_TITLE="$OUTPUT_DIR/SongTitle.txt"
 SONG_ARTIST="$OUTPUT_DIR/SongArtist.txt"
 SONG_ALBUM="$OUTPUT_DIR/SongAlbum.txt"
 SONG_ONELINER="$OUTPUT_DIR/SongInfo.txt"
+
+LOG_DIR="Logs"
+LOG_FILE="$LOG_DIR/$(date +'%F_%H-%M-%S.log')"
+# Set up log directory.
+if [ "$LOGGING" = "true" ]; then mkdir -p $LOG_DIR; fi
 
 # Set up the locations of the output files.
 mkdir -p $OUTPUT_DIR
@@ -161,12 +184,25 @@ i="$SONG_ALBUM_VAR"
 
 if [ "$ONELINE" = "false" ]; then
 # Save the title, artist, and album data as individual text files.
+if [ "$SONG_TITLE_VAR" != "" ]; then
 printf "$SONG_TITLE_VAR" > $SONG_TITLE
 printf "$SONG_ARTIST_VAR" > $SONG_ARTIST
 printf "$SONG_ALBUM_VAR" > $SONG_ALBUM
+fi
 else
 # Same as above, except for oneline mode.
+if [ "$SONG_TITLE_VAR" != "" ]; then
 printf "$(eval "printf \"$ONELINER_FORMAT\"")" > $SONG_ONELINER
+fi
+fi
+
+# Logging.
+if [ "$LOGGING" = "true" ]; then
+
+if [ "$SONG_TITLE_VAR" != "" ]; then
+date +"[%H:%M:%S] $(eval "printf \"$ONELINER_FORMAT\"")" >> $LOG_FILE
+fi
+
 fi
 
 fi
