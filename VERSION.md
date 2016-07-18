@@ -1,1 +1,1 @@
-0.2.0-staging-CUI
+0.2.0-staging
