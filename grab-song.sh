@@ -3,6 +3,8 @@
 tput civis
 stty -echo
 
+export COREPROC="$$"
+
 generate_settings()
 {
 printf "verbose=$VERBOSE\n" >> $SETTINGS_FILE
@@ -229,6 +231,17 @@ printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' =
 
 fi
 
+# Input handling
+/bin/bash -c '
+while true; do
+read -rsn1 -t 0.1 input
+if [ "$input" = "q" ] || [ "$input" = "Q" ]; then
+    kill $COREPROC
+    exit
+fi
+break
+done
+'
 sleep 1
 
 # END MAIN LOOP
