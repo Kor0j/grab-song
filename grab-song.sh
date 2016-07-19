@@ -156,6 +156,68 @@ touch $SONG_ARTIST
 touch $SONG_ALBUM
 touch $SONG_ONELINER
 
+# Define some named pipes for the CUI.
+export PLAYER_SELECTION_PIPE="$TMP_DIR/player-selection-pipe"
+if [ ! -p $PLAYER_SELECTION_PIPE ]; then
+mkfifo $PLAYER_SELECTION_PIPE
+fi
+
+export PLAYER_SELECTION_LONG_PIPE="$TMP_DIR/player-selection-long-pipe"
+if [ ! -p $PLAYER_SELECTION_LONG_PIPE ]; then
+mkfifo $PLAYER_SELECTION_LONG_PIPE
+fi
+
+export VERBOSE_PIPE="$TMP_DIR/verbose-pipe"
+if [ ! -p $VERBOSE_PIPE ]; then
+mkfifo $VERBOSE_PIPE
+fi
+
+export ONELINE_PIPE="$TMP_DIR/oneline-pipe"
+if [ ! -p $ONELINE_PIPE ]; then
+mkfifo $ONELINE_PIPE
+fi
+
+export LOGGING_PIPE="$TMP_DIR/logging-pipe"
+if [ ! -p $LOGGING_PIPE ]; then
+mkfifo $LOGGING_PIPE
+fi
+
+draw_contents()
+{
+# Help key.
+printf "$(tput cup 0 0)$(tput ed)$(tput rev)$(tput bold) Q:$(tput sgr0)$(tput bold) Close. $(tput rev)$(tput bold) P:$(tput sgr0)$(tput bold) Select media player. $(tput rev)$(tput bold) V:$(tput sgr0)$(tput bold) Toggle verbosity. $(tput cup $(tput lines) 0)$(tput cuu1)Selected media player: $PLAYER_SELECTION_LONG\n$(tput rev)$(tput bold) M:$(tput sgr0)$(tput bold) Toggle oneliner mode. $(tput sgr0)$(tput rev)$(tput bold) L:$(tput sgr0)$(tput bold) Toggle track logging. $(tput sgr0)"
+
+# Verbosity.
+if [ "$VERBOSE" = "true" ]; then
+
+tput cup 1 0
+
+printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' =
+
+if [ "$ONELINE" = "false" ]; then
+
+printf "Title: $SONG_TITLE_VAR\n\nArtist: $SONG_ARTIST_VAR\n\nAlbum: $SONG_ALBUM_VAR\n"
+
+else
+
+printf "$(eval "printf \"$ONELINER_FORMAT\"")\n"
+
+fi
+
+printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' =
+
+fi
+}
+
+# Set current player variable for the UI.
+PLAYER_SELECTION_LONG="$(qdbus org.mpris.MediaPlayer2.$PLAYER_SELECTION /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Identity)"
+
+WINDOW_LINES_PREV="0"
+WINDOW_COLS_PREV="0"
+SONG_TITLE_VAR_PREV=""
+SONG_ARTIST_VAR_PREV=""
+SONG_ALBUM_VAR_PREV=""
+
 # BEGIN MAIN LOOP
 while true; do
 
@@ -209,28 +271,6 @@ fi
 
 fi
 
-# Verbosity.
-if [ "$VERBOSE" = "true" ]; then
-
-tput cup 0 0
-tput ed
-
-printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' =
-
-if [ "$ONELINE" = "false" ]; then
-
-printf "Title: $SONG_TITLE_VAR\n\nArtist: $SONG_ARTIST_VAR\n\nAlbum: $SONG_ALBUM_VAR\n"
-
-else
-
-printf "$(eval "printf \"$ONELINER_FORMAT\"")\n"
-
-fi
-
-printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' =
-
-fi
-
 # Input handling
 /bin/bash -c '
 while true; do
@@ -242,6 +282,20 @@ fi
 break
 done
 '
+
+# Display help key and/or verbose if the terminal window is resized.
+if [ "$WINDOW_LINES_PREV" -ne "$(tput lines)" ] || [ "$WINDOW_COLS_PREV" -ne "$(tput cols)" ] || [ "$SONG_TITLE_VAR_PREV" != "$SONG_TITLE_VAR" ] || [ "$SONG_ARTIST_VAR_PREV" != "$SONG_ARTIST_VAR" ] || [ "$SONG_ALBUM_VAR_PREV" != "$SONG_ALBUM_VAR" ]; then
+
+draw_contents
+
+WINDOW_LINES_PREV="$(tput lines)"
+WINDOW_COLS_PREV="$(tput cols)"
+SONG_TITLE_VAR_PREV="$SONG_TITLE_VAR"
+SONG_ARTIST_VAR_PREV="$SONG_TITLE_VAR"
+SONG_ALBUM_VAR_PREV="$SONG_TITLE_VAR"
+
+fi
+
 sleep 1
 
 # END MAIN LOOP
