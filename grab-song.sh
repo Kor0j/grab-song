@@ -95,28 +95,28 @@ TEST_LOG_DIR=$(cat $SETTINGS_FILE | grep "log-directory=")
 TEST_RM_OUTPUT=$(cat $SETTINGS_FILE | grep "rm-output=")
 
 if [ "$TEST_VERBOSE" = "" ]; then
-printf "verbose=$VERBOSE" >> $SETTINGS_FILE
+printf "verbose=$VERBOSE\n" >> $SETTINGS_FILE
 fi
 if [ "$TEST_PLAYER_SELECTION" = "" ]; then
-printf "last-used-player=$PLAYER_SELECTION" >> $SETTINGS_FILE
+printf "last-used-player=$PLAYER_SELECTION\n\n" >> $SETTINGS_FILE
 fi
 if [ "$TEST_OUTPUT_DIR" = "" ]; then
-printf "output-directory=$OUTPUT_DIR" >> $SETTINGS_FILE
+printf "output-directory=$OUTPUT_DIR\n" >> $SETTINGS_FILE
 fi
 if [ "$TEST_ONELINE" = "" ]; then
-printf "oneline=$ONELINE" >> $SETTINGS_FILE
+printf "oneline=$ONELINE\n" >> $SETTINGS_FILE
 fi
 if [ "$TEST_ONELINER_FORMAT" = "" ]; then
-printf "oneliner-format=$ONELINER_FORMAT" >> $SETTINGS_FILE
+printf "oneliner-format=$ONELINER_FORMAT\n" >> $SETTINGS_FILE
 fi
 if [ "$TEST_LOGGING" = "" ]; then
-printf "logging=$LOGGING" >> $SETTINGS_FILE
+printf "logging=$LOGGING\n" >> $SETTINGS_FILE
 fi
 if [ "$TEST_LOG_DIR" = "" ]; then
-printf "log-directory=$LOG_DIR" >> $SETTINGS_FILE
+printf "log-directory=$LOG_DIR\n" >> $SETTINGS_FILE
 fi
 if [ "$TEST_RM_OUTPUT" = "" ]; then
-printf "rm-output=$RM_OUTPUT" >> $SETTINGS_FILE
+printf "rm-output=$RM_OUTPUT\n" >> $SETTINGS_FILE
 fi
 
 # Clean up validation variables
